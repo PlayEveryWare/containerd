@@ -20,6 +20,7 @@
 package windows
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -30,6 +31,7 @@ import (
 
 	"github.com/Microsoft/go-winio/pkg/security"
 	"github.com/Microsoft/go-winio/vhd"
+	"github.com/Microsoft/go-winio/pkg/guid"
 	"github.com/Microsoft/hcsshim"
 	"github.com/Microsoft/hcsshim/computestorage"
 	"github.com/Microsoft/hcsshim/pkg/cimfs"
@@ -113,6 +115,69 @@ func init() {
 			return NewCimFSSnapshotter(ic.Properties[plugins.PropertyRootDir])
 		},
 	})
+	registry.Register(&plugin.Registration{
+		Type: plugins.MountHandlerPlugin,
+		ID: "CimFS",
+		InitFn: func(ic *plugin.InitContext) (interface{}, error) {
+			ic.Meta.Platforms = []ocispec.Platform{platforms.DefaultSpec()}
+			return NewCimFSMountHandler()
+		},
+	})
+}
+
+type cimFSHandler struct {
+}
+
+func (mf *cimFSHandler) Mount(ctx context.Context, m mount.Mount, path string, activeMounts []mount.ActiveMount) (mount.ActiveMount, error) {
+	println("--------------- MOUNT ----------------")
+	cimPath, err := mount.GetCimPath(&m)
+	if err != nil {
+		return mount.ActiveMount{}, err
+	}
+	//volumeGUID, err := guid.NewV5(cimMountNamespace, []byte(containerID))
+	volumeGUID, err := guid.NewV4()
+	if err != nil {
+		return mount.ActiveMount{}, err
+	}
+	println("volumeGUID: " + volumeGUID.String())
+
+	volPath, err := cimfs.Mount(cimPath, volumeGUID, cimfs.CimMountFlagNone)
+	if err != nil {
+		return mount.ActiveMount{}, err
+	}
+	cimfs.Unmount(volPath)
+
+	println("vol: " + volPath)
+//func Mount(cimPath string, volumeGUID guid.GUID, mountFlags uint32) (string, error) {
+
+	println(path)
+	println(cimPath)
+	str, _ := json.Marshal(m)
+	buf := new(bytes.Buffer)
+	json.Indent(buf, str, "", "  ")
+	println(buf.String())
+	str, _  = json.Marshal(activeMounts)
+	buf = new(bytes.Buffer)
+	json.Indent(buf, str, "", "  ")
+	println(buf.String())
+	panic("cimfs handler mount")
+	return mount.ActiveMount{}, fmt.Errorf("cim fs handler mount")
+}
+
+func (mf *cimFSHandler) Unmount(ctx context.Context, path string) error {
+	println("----------------- UNMOUNT ------------------")
+	println("cimfs handler unmount: " + path)
+	return nil
+}
+
+
+func NewCimFSMountHandler() (mount.Handler, error) {
+	if !cimfs.IsCimFSSupported() {
+		return nil, fmt.Errorf("host windows version doesn't support CimFS: %w", plugin.ErrSkipPlugin)
+	}
+
+	return &cimFSHandler{
+	}, nil
 }
 
 // NewCimFSSnapshotter returns a new CimFS based windows snapshotter
