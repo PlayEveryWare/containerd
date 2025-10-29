@@ -22,12 +22,14 @@ package windows
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
 
+	ocicimlayer "github.com/Microsoft/hcsshim/pkg/ociwclayer/cim"
 	"github.com/Microsoft/go-winio/pkg/security"
 	"github.com/Microsoft/go-winio/vhd"
 	"github.com/Microsoft/hcsshim"
@@ -209,11 +211,34 @@ func (s *cimFSSnapshotter) Mounts(ctx context.Context, key string) (_ []mount.Mo
 }
 
 func (s *cimFSSnapshotter) Commit(ctx context.Context, name, key string, opts ...snapshots.Opt) error {
-	if !strings.Contains(key, snapshots.UnpackKeyPrefix) {
-		return fmt.Errorf("committing a scratch snapshot to read-only cim layer isn't supported yet")
-	}
 
 	return s.ms.WithTransaction(ctx, true, func(ctx context.Context) error {
+		if !strings.Contains(key, snapshots.UnpackKeyPrefix) {
+			sn, err := storage.GetSnapshot(ctx, key)
+			if err != nil {
+				return err
+			}
+
+			layerCimPath := s.getLayerCimPath(sn.ID)
+			if _, err = os.Stat(layerCimPath); !errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("failed to commit snapshot. CIM already exists")
+			}
+
+			snDir := s.getSnapshotDir(sn.ID)
+			sandboxPath := filepath.Join(snDir, "sandbox.vhdx")
+			if _, err := os.Stat(sandboxPath); err != nil {
+				return fmt.Errorf("failed to commit snapshot. No sandbox.vhdx")
+			}
+
+			parentLayerPaths := s.parentIDsToParentPaths(sn.ParentIDs)
+			parentLayerCimPaths := s.parentIDsToCimPaths(sn.ParentIDs)
+
+			_, err = ocicimlayer.ImportCimLayerFromSandboxVHD(ctx, sandboxPath, snDir, layerCimPath, parentLayerPaths, parentLayerCimPaths)
+			if err != nil {
+				return fmt.Errorf("failed to commit snapshot: %w", err)
+			}
+		}
+
 		usage, err := s.Usage(ctx, key)
 		if err != nil {
 			return fmt.Errorf("failed to get usage during commit: %w", err)
