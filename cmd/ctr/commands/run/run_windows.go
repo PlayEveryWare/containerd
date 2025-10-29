@@ -102,11 +102,17 @@ func NewContainer(ctx context.Context, client *containerd.Client, cliContext *cl
 			containerd.WithImage(image),
 			containerd.WithImageConfigLabels(image),
 			containerd.WithSnapshotter(snapshotter),
-			containerd.WithNewSnapshot(
+		)
+		if snapshot := cliContext.String("snapshot"); snapshot == "" {
+			cOpts = append(cOpts, containerd.WithNewSnapshot(
 				id,
 				image,
 				snapshots.WithLabels(commands.LabelArgs(cliContext.StringSlice("snapshotter-label")))),
-			containerd.WithAdditionalContainerLabels(labels))
+			)
+		} else {
+			cOpts = append(cOpts, containerd.WithSnapshot(snapshot))
+		}
+		cOpts = append(cOpts, containerd.WithAdditionalContainerLabels(labels))
 
 		if len(args) > 0 {
 			opts = append(opts, oci.WithProcessArgs(args...))
