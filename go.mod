@@ -173,3 +173,5 @@ exclude (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 )
+
+replace github.com/Microsoft/hcsshim => github.com/playeveryware/hcsshim v0.14.0-rc.1.0.20251209164808-9d0b60e3d7a4

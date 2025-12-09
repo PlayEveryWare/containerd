@@ -18,7 +18,7 @@ github.com/Microsoft/go-winio/pkg/fs
 github.com/Microsoft/go-winio/pkg/guid
 github.com/Microsoft/go-winio/pkg/security
 github.com/Microsoft/go-winio/vhd
-# github.com/Microsoft/hcsshim v0.14.0-rc.1
+# github.com/Microsoft/hcsshim v0.14.0-rc.1 => github.com/playeveryware/hcsshim v0.14.0-rc.1.0.20251209164808-9d0b60e3d7a4
 ## explicit; go 1.23.0
 github.com/Microsoft/hcsshim
 github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/options
@@ -951,3 +951,4 @@ tags.cncf.io/container-device-interface/pkg/parser
 # tags.cncf.io/container-device-interface/specs-go v1.0.0
 ## explicit; go 1.19
 tags.cncf.io/container-device-interface/specs-go
+# github.com/Microsoft/hcsshim => github.com/playeveryware/hcsshim v0.14.0-rc.1.0.20251209164808-9d0b60e3d7a4
